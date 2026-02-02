@@ -1,0 +1,77 @@
+curl 'https://proxy.cifang.xyz/proxy?url=https%3A%2F%2Fanyrouter.top%2Fv1%2Fdashboard%2Fbilling%2Fsubscription' \
+  -X 'OPTIONS' \
+  -H 'accept: */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'access-control-request-headers: authorization' \
+  -H 'access-control-request-method: GET' \
+  -H 'cache-control: no-cache' \
+  -H 'origin: https://apikey.cifang.xyz' \
+  -H 'pragma: no-cache' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://apikey.cifang.xyz/' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-site' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0' ;
+curl 'https://proxy.cifang.xyz/proxy?url=https%3A%2F%2Fanyrouter.top%2Fv1%2Fdashboard%2Fbilling%2Fsubscription' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'authorization: Bearer sk-cWWotCIAy3xkCyvsLFdxwvMIDwvTA7AaBPDUI7NRHyhoc7Kj' \
+  -H 'cache-control: no-cache' \
+  -H 'origin: https://apikey.cifang.xyz' \
+  -H 'pragma: no-cache' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://apikey.cifang.xyz/' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-site' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0' ;
+curl 'https://proxy.cifang.xyz/proxy?url=https%3A%2F%2Fanyrouter.top%2Fv1%2Fdashboard%2Fbilling%2Fusage%3Fstart_date%3D2025-10-25%26end_date%3D2026-2-2' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'authorization: Bearer sk-cWWotCIAy3xkCyvsLFdxwvMIDwvTA7AaBPDUI7NRHyhoc7Kj' \
+  -H 'cache-control: no-cache' \
+  -H 'origin: https://apikey.cifang.xyz' \
+  -H 'pragma: no-cache' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://apikey.cifang.xyz/' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-site' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0' ;
+curl 'https://proxy.cifang.xyz/proxy?url=https%3A%2F%2Fanyrouter.top%2Fv1%2Fdashboard%2Fbilling%2Fusage%3Fstart_date%3D2025-10-25%26end_date%3D2026-2-2' \
+  -X 'OPTIONS' \
+  -H 'accept: */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'access-control-request-headers: authorization' \
+  -H 'access-control-request-method: GET' \
+  -H 'cache-control: no-cache' \
+  -H 'origin: https://apikey.cifang.xyz' \
+  -H 'pragma: no-cache' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://apikey.cifang.xyz/' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-site' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0' ;
+curl 'https://proxy.cifang.xyz/proxy?url=https%3A%2F%2Fanyrouter.top%2Fapi%2Flog%2Ftoken%3Fkey%3Dsk-cWWotCIAy3xkCyvsLFdxwvMIDwvTA7AaBPDUI7NRHyhoc7Kj' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'cache-control: no-cache' \
+  -H 'origin: https://apikey.cifang.xyz' \
+  -H 'pragma: no-cache' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://apikey.cifang.xyz/' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-site' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0'

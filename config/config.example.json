@@ -1,0 +1,15 @@
+{
+  "profiles": [
+    {
+      "name": "示例站点",
+      "url": "https://api.example.com",
+      "key": "sk-your-api-key-here"
+    }
+  ],
+  "api_endpoints": {
+    "balance_subscription": "/v1/dashboard/billing/subscription",
+    "balance_usage": "/v1/dashboard/billing/usage",
+    "logs": "/api/log/token",
+    "logs_page_size": 50
+  }
+}
