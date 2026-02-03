@@ -201,7 +201,7 @@ KonataAPI/
 └── .gitignore
 ```
 
-## 感谢L站此方佬**(@user2996)**针对claude模型真假方法的分享，本项目根据 https://apikey.cifang.xyz/ 进行模仿与个人针对性更改。
+## 感谢L站此方佬(@user2996)针对claude模型真假方法的分享，本项目根据 https://apikey.cifang.xyz/ 进行模仿与个人针对性更改。
 
 
 ## License
