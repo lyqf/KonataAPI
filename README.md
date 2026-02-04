@@ -25,8 +25,25 @@
 - **站点测试模块** - 连通性测试、Claude 真伪性检测、原生对话
   - **多种 API 预设** - 支持原生 Anthropic/OpenAI、中转站格式、Claude CLI 真实格式
   - **Claude CLI 真实格式** - 完全模拟 Claude Code CLI 请求，可绕过部分中转站验证
+- **一键签到功能** - 配置签到网址，批量打开所有签到页面
 ![alt text](assets/连通性测试.png)
 ![alt text](assets/真伪性测试.png)
+
+
+## 界面布局
+
+主界面采用**标签页切换**设计，左侧为全局站点列表，右侧分为三个功能标签页：
+
+| 标签页 | 功能 | 说明 |
+|--------|------|------|
+| **💰 余额查询** | 查询余额/日志 | 配置站点信息，查询余额和调用日志 |
+| **🧪 站点测试** | 连通性/真伪性测试 | 测试站点连通性、检测模型真伪、原生对话 |
+| **📊 数据统计** | 站点档案管理 | 管理站点信息、记录充值、配置签到网址、查看统计图表 |
+
+**使用流程：**
+1. 在左侧「中转站列表」双击选择站点
+2. 站点信息自动同步到所有标签页
+3. 切换标签页执行不同功能
 
 
 ## 支持的 API 格式
@@ -88,6 +105,13 @@ python main.py
 2. 点击「保存配置」
 3. 双击左侧列表可快速加载已保存的配置
 
+### 一键签到
+
+1. 在「📊 数据统计」标签页选择站点
+2. 填写「签到网址」（如 `https://xxx.com/user/checkin`）
+3. 点击「保存修改」
+4. 点击「🎁 一键签到」批量打开所有配置了签到网址的站点
+
 ### 日志代理（可选）
 
 部分中转站的日志接口有访问限制，需要通过代理访问。在站点配置中填写「日志代理」地址即可，留空则直接访问。
@@ -146,6 +170,30 @@ python main.py
   - `enabled` - 是否启用自动查询
   - `interval_minutes` - 查询间隔（分钟）
 
+### 站点统计数据格式
+
+站点统计数据位于 `config/stats.json`，每个站点支持以下字段：
+
+```json
+{
+  "sites": [
+    {
+      "id": "uuid",
+      "name": "站点名称",
+      "url": "https://api.example.com",
+      "api_key": "sk-xxx",
+      "type": "paid",
+      "tags": ["claude", "gpt"],
+      "balance": 100.0,
+      "balance_unit": "USD",
+      "checkin_url": "https://example.com/user/checkin",
+      "notes": "备注信息",
+      "recharge_records": []
+    }
+  ]
+}
+```
+
 ## 打包为可执行文件
 
 ### 方式一：使用 spec 文件（推荐）
@@ -177,16 +225,16 @@ KonataAPI/
 ├── src/
 │   └── konata_api/
 │       ├── __init__.py
-│       ├── app.py              # GUI 主应用
+│       ├── app.py              # GUI 主应用（标签页布局）
 │       ├── dialogs.py          # 对话框组件
 │       ├── tray.py             # 系统托盘模块
 │       ├── utils.py            # 工具函数
 │       ├── api.py              # API 查询逻辑
 │       ├── api_presets.py      # API 接口预设配置
 │       ├── stats.py            # 站点统计数据管理
-│       ├── stats_dialog.py     # 站点统计对话框
+│       ├── stats_dialog.py     # 站点统计模块（StatsFrame）
 │       ├── conversation_test.py # Claude 真伪检测核心
-│       ├── test_dialog.py      # 站点测试对话框
+│       ├── test_dialog.py      # 站点测试模块（TestFrame）
 │       └── test_settings_dialog.py # 测试设置对话框
 ├── assets/
 │   ├── icon.ico                # 程序图标

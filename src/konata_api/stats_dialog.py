@@ -1,5 +1,5 @@
 """
-统计模块 GUI - 站点档案管理弹窗
+统计模块 GUI - 站点档案管理
 """
 import io
 import webbrowser
@@ -19,67 +19,87 @@ from konata_api.stats import (
 )
 
 
-class StatsDialog:
-    """统计模块主弹窗"""
+class StatsFrame(ttk.Frame):
+    """统计模块面板（嵌入式 Frame）"""
 
-    def __init__(self, parent, profiles=None):
+    def __init__(self, parent, profiles=None, show_site_list=True, **kwargs):
         """
         Args:
             parent: 父窗口
             profiles: 主配置中的 profiles 列表（用于导入）
+            show_site_list: 是否显示站点列表（嵌入主窗口时可隐藏）
         """
-        self.parent = parent
+        super().__init__(parent, **kwargs)
         self.profiles = profiles or []
+        self.show_site_list = show_site_list
         self.stats_data = load_stats()
         self.current_site_id = None
         self.charts_loaded = False  # 图表是否已加载
 
-        self.dialog = ttk.Toplevel(parent)
-        self.dialog.title("📊 站点统计")
-        self.dialog.geometry("1100x750")
-        self.dialog.resizable(True, True)
-
-        # 设置窗口图标
-        try:
-            self.dialog.iconbitmap(resource_path("assets/icon.ico"))
-        except:
-            pass
-
-        self.dialog.transient(parent)
-
         self.create_widgets()
-        self.refresh_site_list()
+        if self.show_site_list:
+            self.refresh_site_list()
         self.update_summary()
+
+    def set_profiles(self, profiles):
+        """更新 profiles 列表"""
+        self.profiles = profiles or []
+
+    def set_current_site(self, site_info: dict):
+        """设置当前站点（从外部调用）"""
+        # 查找或创建对应的站点
+        url = site_info.get("url", "").rstrip("/")
+        name = site_info.get("name", "")
+
+        # 在 stats_data 中查找
+        for site in self.stats_data.get("sites", []):
+            if site.get("url", "").rstrip("/") == url:
+                self.current_site_id = site["id"]
+                self.load_site_to_form(site)
+                return
+
+        # 如果不存在，显示基本信息
+        self.current_site_id = None
+        self.name_var.set(name)
+        self.url_var.set(url)
+        self.api_key_var.set(site_info.get("api_key", ""))
 
     def create_widgets(self):
         """创建主界面"""
         # 使用 ScrolledFrame 包裹整个内容
-        self.scroll_frame = ScrolledFrame(self.dialog, autohide=True)
+        self.scroll_frame = ScrolledFrame(self, autohide=True)
         self.scroll_frame.pack(fill=BOTH, expand=YES)
 
         main_frame = ttk.Frame(self.scroll_frame, padding=10)
         main_frame.pack(fill=BOTH, expand=YES)
 
-        # 上半部分：站点管理（左右平均分）
-        top_frame = ttk.Frame(main_frame)
-        top_frame.pack(fill=BOTH, expand=YES, pady=(0, 10))
+        if self.show_site_list:
+            # 上半部分：站点管理（左右平均分）
+            top_frame = ttk.Frame(main_frame)
+            top_frame.pack(fill=BOTH, expand=YES, pady=(0, 10))
 
-        # 配置左右各占一半
-        top_frame.columnconfigure(0, weight=1)
-        top_frame.columnconfigure(1, weight=1)
-        top_frame.rowconfigure(0, weight=1)
+            # 配置左右各占一半
+            top_frame.columnconfigure(0, weight=1)
+            top_frame.columnconfigure(1, weight=1)
+            top_frame.rowconfigure(0, weight=1)
 
-        # 左侧：站点列表
-        left_frame = ttk.Labelframe(top_frame, text=" 站点列表 ", padding=10)
-        left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+            # 左侧：站点列表
+            left_frame = ttk.Labelframe(top_frame, text=" 站点列表 ", padding=10)
+            left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
 
-        self.create_site_list(left_frame)
+            self.create_site_list(left_frame)
 
-        # 右侧：站点详情/编辑
-        right_frame = ttk.Labelframe(top_frame, text=" 站点详情 ", padding=10)
-        right_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+            # 右侧：站点详情/编辑
+            right_frame = ttk.Labelframe(top_frame, text=" 站点详情 ", padding=10)
+            right_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
 
-        self.create_site_form(right_frame)
+            self.create_site_form(right_frame)
+        else:
+            # 单栏模式：只显示站点详情（站点由全局列表控制）
+            detail_frame = ttk.Labelframe(main_frame, text=" 站点详情 ", padding=10)
+            detail_frame.pack(fill=BOTH, expand=YES, pady=(0, 10))
+
+            self.create_site_form(detail_frame)
 
         # 下半部分：图表区域
         bottom_frame = ttk.Labelframe(main_frame, text=" 统计图表 ", padding=10)
@@ -208,9 +228,18 @@ class StatsDialog:
         self.notes_text = ttk.Text(row7, height=3, width=30)
         self.notes_text.pack(side=LEFT, fill=X, expand=YES)
 
+        # 签到网址
+        row8 = ttk.Frame(form_frame)
+        row8.pack(fill=X, pady=(0, 8))
+        ttk.Label(row8, text="签到网址:", width=10).pack(side=LEFT)
+        self.checkin_url_var = ttk.StringVar()
+        ttk.Entry(row8, textvariable=self.checkin_url_var, width=30).pack(side=LEFT, fill=X, expand=YES)
+        ttk.Button(row8, text="🔗", command=self.open_checkin_url, bootstyle="info-outline", width=3).pack(side=LEFT, padx=(5, 0))
+
         # 保存按钮
         btn_frame = ttk.Frame(form_frame)
         btn_frame.pack(fill=X, pady=(15, 0))
+        ttk.Button(btn_frame, text="🎁 一键签到", command=self.open_all_checkin, bootstyle="warning", width=12).pack(side=LEFT)
         ttk.Button(btn_frame, text="保存修改", command=self.save_site, bootstyle="success", width=12).pack(side=RIGHT)
 
     def create_recharge_form(self, parent):
@@ -271,28 +300,34 @@ class StatsDialog:
 
         ttk.Button(top_bar, text="📈 绘制图表", command=self.draw_charts, bootstyle="success", width=12).pack(side=RIGHT)
 
-        # 图表区域
+        # 图表区域 - 竖向排列（上下放置）
         charts_frame = ttk.Frame(parent)
         charts_frame.pack(fill=BOTH, expand=YES)
 
-        # 左图：余额柱状图
-        left_chart = ttk.Frame(charts_frame)
-        left_chart.pack(side=LEFT, fill=BOTH, expand=YES, padx=(0, 5))
+        # 上图：余额柱状图
+        top_chart = ttk.Labelframe(charts_frame, text=" 余额分布 ", padding=5)
+        top_chart.pack(fill=X, pady=(0, 10))
 
-        self.balance_chart_label = ttk.Label(left_chart, text="点击「绘制图表」生成统计图", bootstyle="secondary", font=("Microsoft YaHei", 10))
+        self.balance_chart_label = ttk.Label(top_chart, text="点击「绘制图表」生成统计图", bootstyle="secondary", font=("Microsoft YaHei", 10))
         self.balance_chart_label.pack(fill=BOTH, expand=YES)
 
-        # 右图：分类统计图
-        right_chart = ttk.Frame(charts_frame)
-        right_chart.pack(side=LEFT, fill=BOTH, expand=YES, padx=(5, 0))
+        # 下图：分类统计图
+        bottom_chart = ttk.Labelframe(charts_frame, text=" 分类统计 ", padding=5)
+        bottom_chart.pack(fill=X)
 
-        self.type_chart_label = ttk.Label(right_chart, text="点击「绘制图表」生成统计图", bootstyle="secondary", font=("Microsoft YaHei", 10))
+        self.type_chart_label = ttk.Label(bottom_chart, text="点击「绘制图表」生成统计图", bootstyle="secondary", font=("Microsoft YaHei", 10))
         self.type_chart_label.pack(fill=BOTH, expand=YES)
 
     # ============ 事件处理 ============
 
     def refresh_site_list(self):
         """刷新站点列表"""
+        self.stats_data = load_stats()
+
+        # 如果没有站点列表组件，跳过
+        if not hasattr(self, 'site_tree'):
+            return
+
         self.site_tree.delete(*self.site_tree.get_children())
 
         for site in self.stats_data.get("sites", []):
@@ -352,6 +387,9 @@ class StatsDialog:
         self.notes_text.delete("1.0", "end")
         self.notes_text.insert("1.0", site.get("notes", ""))
 
+        # 签到网址
+        self.checkin_url_var.set(site.get("checkin_url", ""))
+
         # 充值记录
         self.refresh_recharge_list(site)
 
@@ -369,7 +407,7 @@ class StatsDialog:
     def save_site(self):
         """保存站点修改"""
         if not self.current_site_id:
-            messagebox.showwarning("提示", "请先选择一个站点", parent=self.dialog)
+            messagebox.showwarning("提示", "请先选择一个站点")
             return
 
         # 解析类型
@@ -399,16 +437,17 @@ class StatsDialog:
             "api_key": self.api_key_var.get().strip(),
             "notes": self.notes_text.get("1.0", "end").strip(),
             "balance": balance,
-            "balance_unit": balance_unit
+            "balance_unit": balance_unit,
+            "checkin_url": self.checkin_url_var.get().strip()
         }
 
         if update_site(self.stats_data, self.current_site_id, updates):
             save_stats(self.stats_data)
             self.refresh_site_list()
             self.update_summary()
-            messagebox.showinfo("成功", "站点信息已保存", parent=self.dialog)
+            messagebox.showinfo("成功", "站点信息已保存")
         else:
-            messagebox.showerror("错误", "保存失败", parent=self.dialog)
+            messagebox.showerror("错误", "保存失败")
 
     def add_new_site(self):
         """添加新站点"""
@@ -429,14 +468,14 @@ class StatsDialog:
     def delete_current_site(self):
         """删除当前选中的站点"""
         if not self.current_site_id:
-            messagebox.showwarning("提示", "请先选择一个站点", parent=self.dialog)
+            messagebox.showwarning("提示", "请先选择一个站点")
             return
 
         site = get_site_by_id(self.stats_data, self.current_site_id)
         if not site:
             return
 
-        if messagebox.askyesno("确认删除", f"确定要删除站点「{site.get('name', '')}」吗？", parent=self.dialog):
+        if messagebox.askyesno("确认删除", f"确定要删除站点「{site.get('name', '')}」吗？"):
             delete_site(self.stats_data, self.current_site_id)
             save_stats(self.stats_data)
             self.current_site_id = None
@@ -455,18 +494,20 @@ class StatsDialog:
         self.balance_unit_var.set("USD")
         self.last_query_label.config(text="-")
         self.notes_text.delete("1.0", "end")
-        self.recharge_tree.delete(*self.recharge_tree.get_children())
+        self.checkin_url_var.set("")
+        if hasattr(self, 'recharge_tree'):
+            self.recharge_tree.delete(*self.recharge_tree.get_children())
 
     def import_from_config(self):
         """从主配置导入站点"""
         if not self.profiles:
-            messagebox.showinfo("提示", "没有可导入的配置", parent=self.dialog)
+            messagebox.showinfo("提示", "没有可导入的配置")
             return
 
         new_sites = import_from_profiles(self.profiles, self.stats_data.get("sites", []))
 
         if not new_sites:
-            messagebox.showinfo("提示", "所有配置已存在，无需导入", parent=self.dialog)
+            messagebox.showinfo("提示", "所有配置已存在，无需导入")
             return
 
         for site in new_sites:
@@ -475,12 +516,12 @@ class StatsDialog:
         save_stats(self.stats_data)
         self.refresh_site_list()
         self.update_summary()
-        messagebox.showinfo("成功", f"已导入 {len(new_sites)} 个站点", parent=self.dialog)
+        messagebox.showinfo("成功", f"已导入 {len(new_sites)} 个站点")
 
     def open_site_url(self):
         """打开选中站点的网址"""
         if not self.current_site_id:
-            messagebox.showwarning("提示", "请先选择一个站点", parent=self.dialog)
+            messagebox.showwarning("提示", "请先选择一个站点")
             return
 
         site = get_site_by_id(self.stats_data, self.current_site_id)
@@ -489,12 +530,41 @@ class StatsDialog:
             if url:
                 webbrowser.open(url)
             else:
-                messagebox.showwarning("提示", "该站点没有配置网址", parent=self.dialog)
+                messagebox.showwarning("提示", "该站点没有配置网址")
+
+    def open_checkin_url(self):
+        """打开当前站点的签到网址"""
+        checkin_url = self.checkin_url_var.get().strip()
+        if checkin_url:
+            webbrowser.open(checkin_url)
+        else:
+            messagebox.showwarning("提示", "该站点没有配置签到网址")
+
+    def open_all_checkin(self):
+        """一键打开所有已配置签到网址的站点"""
+        self.stats_data = load_stats()
+        sites = self.stats_data.get("sites", [])
+
+        checkin_urls = []
+        for site in sites:
+            checkin_url = site.get("checkin_url", "").strip()
+            if checkin_url:
+                checkin_urls.append((site.get("name", "未命名"), checkin_url))
+
+        if not checkin_urls:
+            messagebox.showinfo("提示", "没有配置签到网址的站点")
+            return
+
+        # 确认打开
+        names = [name for name, _ in checkin_urls]
+        if messagebox.askyesno("确认", f"即将打开 {len(checkin_urls)} 个签到页面:\n\n" + "\n".join(names[:10]) + ("\n..." if len(names) > 10 else "")):
+            for name, url in checkin_urls:
+                webbrowser.open(url)
 
     def add_recharge(self):
         """添加充值记录"""
         if not self.current_site_id:
-            messagebox.showwarning("提示", "请先选择一个站点", parent=self.dialog)
+            messagebox.showwarning("提示", "请先选择一个站点")
             return
 
         try:
@@ -502,7 +572,7 @@ class StatsDialog:
             if amount <= 0:
                 raise ValueError()
         except ValueError:
-            messagebox.showwarning("提示", "请输入有效的金额", parent=self.dialog)
+            messagebox.showwarning("提示", "请输入有效的金额")
             return
 
         date = self.recharge_date_var.get().strip() or None
@@ -527,7 +597,7 @@ class StatsDialog:
 
         selection = self.recharge_tree.selection()
         if not selection:
-            messagebox.showwarning("提示", "请先选择一条充值记录", parent=self.dialog)
+            messagebox.showwarning("提示", "请先选择一条充值记录")
             return
 
         record_id = selection[0]
@@ -552,9 +622,9 @@ class StatsDialog:
 
         sites = self.stats_data.get("sites", [])
 
-        # 生成余额柱状图
+        # 生成余额柱状图（宽度大，高度小，适合竖向排列）
         try:
-            fig1 = create_balance_bar_chart(sites, figsize=(5, 3), dpi=100)
+            fig1 = create_balance_bar_chart(sites, figsize=(8, 2.5), dpi=100)
             img1 = self.fig_to_image(fig1, FigureCanvasAgg)
             self.balance_chart_label.config(image=img1, text="")
             self.balance_chart_label.image = img1
@@ -564,7 +634,7 @@ class StatsDialog:
 
         # 生成分类统计图
         try:
-            fig2 = create_type_stats_chart(sites, figsize=(5, 3), dpi=100)
+            fig2 = create_type_stats_chart(sites, figsize=(8, 2.5), dpi=100)
             img2 = self.fig_to_image(fig2, FigureCanvasAgg)
             self.type_chart_label.config(image=img2, text="")
             self.type_chart_label.image = img2
@@ -585,3 +655,33 @@ class StatsDialog:
 
         img = Image.open(buf)
         return ImageTk.PhotoImage(img)
+
+
+class StatsDialog:
+    """统计模块弹窗（兼容旧接口）"""
+
+    def __init__(self, parent, profiles=None):
+        """
+        Args:
+            parent: 父窗口
+            profiles: 主配置中的 profiles 列表（用于导入）
+        """
+        self.parent = parent
+        self.profiles = profiles or []
+
+        self.dialog = ttk.Toplevel(parent)
+        self.dialog.title("📊 站点统计")
+        self.dialog.geometry("1100x750")
+        self.dialog.resizable(True, True)
+
+        # 设置窗口图标
+        try:
+            self.dialog.iconbitmap(resource_path("assets/icon.ico"))
+        except:
+            pass
+
+        self.dialog.transient(parent)
+
+        # 嵌入 StatsFrame
+        self.stats_frame = StatsFrame(self.dialog, profiles=profiles)
+        self.stats_frame.pack(fill=BOTH, expand=YES)

@@ -27,20 +27,14 @@ from konata_api.api_presets import (
 from konata_api.utils import resource_path
 
 
-class TestDialog(ttkb.Toplevel):
-    """站点测试对话框"""
+class TestFrame(ttkb.Frame):
+    """站点测试面板（嵌入式 Frame）"""
 
-    def __init__(self, parent, **kwargs):
-        super().__init__(parent)
-        self.title("站点测试")
-        self.geometry("900x650")
-        self.minsize(800, 550)
+    def __init__(self, parent, show_site_list=True, **kwargs):
+        super().__init__(parent, **kwargs)
 
-        # 设置窗口图标
-        try:
-            self.iconbitmap(resource_path("assets/icon.ico"))
-        except Exception:
-            pass
+        # 是否显示站点列表（嵌入主窗口时可隐藏，使用全局列表）
+        self.show_site_list = show_site_list
 
         # 当前选中的站点
         self.current_site: Optional[dict] = None
@@ -63,7 +57,14 @@ class TestDialog(ttkb.Toplevel):
         self.api_config = {}  # 自定义配置
 
         self._create_widgets()
-        self._load_sites()
+        if self.show_site_list:
+            self._load_sites()
+
+    def set_current_site(self, site_info: dict):
+        """设置当前站点（从外部调用）"""
+        self.current_site = site_info
+        self.lbl_site_name.config(text=site_info.get("name", "未选择"))
+        self.lbl_site_url.config(text=site_info.get("url", "-"))
 
     def _create_widgets(self):
         """创建界面组件"""
@@ -71,46 +72,51 @@ class TestDialog(ttkb.Toplevel):
         main_frame = ttk.Frame(self, padding=10)
         main_frame.pack(fill=BOTH, expand=YES)
 
-        # 左右分栏
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=2)
-        main_frame.rowconfigure(0, weight=1)
+        if self.show_site_list:
+            # 左右分栏模式（弹窗使用）
+            main_frame.columnconfigure(0, weight=1)
+            main_frame.columnconfigure(1, weight=2)
+            main_frame.rowconfigure(0, weight=1)
 
-        # ========== 左侧：站点列表 ==========
-        left_frame = ttk.LabelFrame(main_frame, text="站点列表", padding=5)
-        left_frame.grid(row=0, column=0, sticky=NSEW, padx=(0, 5))
-        left_frame.rowconfigure(0, weight=1)
-        left_frame.columnconfigure(0, weight=1)
+            # ========== 左侧：站点列表 ==========
+            left_frame = ttk.LabelFrame(main_frame, text="站点列表", padding=5)
+            left_frame.grid(row=0, column=0, sticky=NSEW, padx=(0, 5))
+            left_frame.rowconfigure(0, weight=1)
+            left_frame.columnconfigure(0, weight=1)
 
-        # 站点列表 Treeview
-        columns = ("name", "url")
-        self.site_tree = ttk.Treeview(
-            left_frame, columns=columns, show="headings", height=20
-        )
-        self.site_tree.heading("name", text="站点名称")
-        self.site_tree.heading("url", text="URL")
-        self.site_tree.column("name", width=100)
-        self.site_tree.column("url", width=150)
-        self.site_tree.grid(row=0, column=0, sticky=NSEW)
+            # 站点列表 Treeview
+            columns = ("name", "url")
+            self.site_tree = ttk.Treeview(
+                left_frame, columns=columns, show="headings", height=20
+            )
+            self.site_tree.heading("name", text="站点名称")
+            self.site_tree.heading("url", text="URL")
+            self.site_tree.column("name", width=100)
+            self.site_tree.column("url", width=150)
+            self.site_tree.grid(row=0, column=0, sticky=NSEW)
 
-        # 滚动条
-        scrollbar = ttk.Scrollbar(
-            left_frame, orient=VERTICAL, command=self.site_tree.yview
-        )
-        scrollbar.grid(row=0, column=1, sticky=NS)
-        self.site_tree.configure(yscrollcommand=scrollbar.set)
+            # 滚动条
+            scrollbar = ttk.Scrollbar(
+                left_frame, orient=VERTICAL, command=self.site_tree.yview
+            )
+            scrollbar.grid(row=0, column=1, sticky=NS)
+            self.site_tree.configure(yscrollcommand=scrollbar.set)
 
-        # 绑定选择事件
-        self.site_tree.bind("<<TreeviewSelect>>", self._on_site_select)
+            # 绑定选择事件
+            self.site_tree.bind("<<TreeviewSelect>>", self._on_site_select)
 
-        # 刷新按钮
-        ttk.Button(
-            left_frame, text="🔄 刷新列表", command=self._load_sites, bootstyle="info-outline"
-        ).grid(row=1, column=0, columnspan=2, pady=(5, 0), sticky=EW)
+            # 刷新按钮
+            ttk.Button(
+                left_frame, text="🔄 刷新列表", command=self._load_sites, bootstyle="info-outline"
+            ).grid(row=1, column=0, columnspan=2, pady=(5, 0), sticky=EW)
 
-        # ========== 右侧：测试面板 ==========
-        right_frame = ttk.Frame(main_frame)
-        right_frame.grid(row=0, column=1, sticky=NSEW)
+            # ========== 右侧：测试面板 ==========
+            right_frame = ttk.Frame(main_frame)
+            right_frame.grid(row=0, column=1, sticky=NSEW)
+        else:
+            # 单栏模式（嵌入主窗口使用，站点由全局列表控制）
+            right_frame = main_frame
+
         right_frame.rowconfigure(2, weight=1)
         right_frame.columnconfigure(0, weight=1)
 
@@ -225,6 +231,10 @@ class TestDialog(ttkb.Toplevel):
 
     def _load_sites(self):
         """加载站点列表"""
+        # 如果没有站点列表组件，跳过
+        if not hasattr(self, 'site_tree'):
+            return
+
         # 清空现有项
         for item in self.site_tree.get_children():
             self.site_tree.delete(item)
@@ -327,7 +337,9 @@ class TestDialog(ttkb.Toplevel):
             if config.get("model"):
                 self.selected_model.set(config["model"])
 
-        TestSettingsDialog(self, current_config=self.api_config, on_save=on_save)
+        # 获取顶层窗口
+        toplevel = self.winfo_toplevel()
+        TestSettingsDialog(toplevel, current_config=self.api_config, on_save=on_save)
 
     def _get_current_preset_id(self) -> str:
         """获取当前预设 ID"""
@@ -643,3 +655,22 @@ class TestDialog(ttkb.Toplevel):
 
         threading.Thread(target=_run, daemon=True).start()
 
+
+class TestDialog(ttkb.Toplevel):
+    """站点测试对话框（弹窗包装器，兼容旧接口）"""
+
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent)
+        self.title("站点测试")
+        self.geometry("900x650")
+        self.minsize(800, 550)
+
+        # 设置窗口图标
+        try:
+            self.iconbitmap(resource_path("assets/icon.ico"))
+        except Exception:
+            pass
+
+        # 嵌入 TestFrame
+        self.test_frame = TestFrame(self)
+        self.test_frame.pack(fill=BOTH, expand=YES)

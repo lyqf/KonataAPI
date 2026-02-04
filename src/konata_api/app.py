@@ -17,8 +17,8 @@ from konata_api.utils import (
 )
 from konata_api.dialogs import SettingsDialog, RawResponseDialog, ProfileAdvancedDialog, BalanceSummaryDialog
 from konata_api.tray import TrayIcon
-from konata_api.stats_dialog import StatsDialog
-from konata_api.test_dialog import TestDialog
+from konata_api.stats_dialog import StatsFrame
+from konata_api.test_dialog import TestFrame
 
 
 class ApiQueryApp:
@@ -90,13 +90,13 @@ class ApiQueryApp:
         ttk.Button(list_btn_frame, text="⚙️ 高级设置", command=self.open_profile_advanced, bootstyle="info-outline", width=20).pack(fill=X, pady=3)
         ttk.Button(list_btn_frame, text="🗑️ 删除选中", command=self.delete_profile, bootstyle="danger-outline", width=20).pack(fill=X, pady=3)
 
-        # === 右侧：详情和结果 ===
+        # === 右侧：主 Notebook 标签页 ===
         right_frame = ttk.Frame(main_frame)
         right_frame.pack(side=LEFT, fill=BOTH, expand=YES)
 
-        # === 标题 ===
+        # === 标题栏 ===
         title_frame = ttk.Frame(right_frame)
-        title_frame.pack(fill=X, pady=(0, 15))
+        title_frame.pack(fill=X, pady=(0, 10))
 
         title_left = ttk.Frame(title_frame)
         title_left.pack(side=LEFT, fill=X, expand=YES)
@@ -104,12 +104,42 @@ class ApiQueryApp:
         ttk.Label(title_left, text="支持多中转站配置管理与批量查询", font=("Microsoft YaHei", 9), bootstyle="secondary").pack(anchor=W)
 
         ttk.Button(title_frame, text="⚙️ 设置", command=self.open_settings, bootstyle="secondary-outline", width=10).pack(side=RIGHT, padx=5)
-        ttk.Button(title_frame, text="📊 统计", command=self.open_stats, bootstyle="info-outline", width=10).pack(side=RIGHT, padx=5)
-        ttk.Button(title_frame, text="🧪 测试", command=self.open_test, bootstyle="warning-outline", width=10).pack(side=RIGHT, padx=5)
 
+        # === 主功能 Notebook ===
+        # 自定义标签页样式 - 更大的字体和 padding
+        style = ttk.Style()
+        style.configure("Big.TNotebook.Tab", font=("Microsoft YaHei", 11, "bold"), padding=(20, 10))
+
+        self.main_notebook = ttk.Notebook(right_frame, bootstyle="primary", style="Big.TNotebook")
+        self.main_notebook.pack(fill=BOTH, expand=YES)
+
+        # Tab 1: 查询
+        query_tab = ttk.Frame(self.main_notebook, padding=5)
+        self.main_notebook.add(query_tab, text="  💰 余额查询  ")
+        self.create_query_tab(query_tab)
+
+        # Tab 2: 测试
+        test_tab = ttk.Frame(self.main_notebook, padding=5)
+        self.main_notebook.add(test_tab, text="  🧪 站点测试  ")
+        self.test_frame = TestFrame(test_tab, show_site_list=False)
+        self.test_frame.pack(fill=BOTH, expand=YES)
+
+        # Tab 3: 统计
+        stats_tab = ttk.Frame(self.main_notebook, padding=5)
+        self.main_notebook.add(stats_tab, text="  📊 数据统计  ")
+        self.stats_frame = StatsFrame(stats_tab, profiles=self.config.get("profiles", []), show_site_list=False)
+        self.stats_frame.pack(fill=BOTH, expand=YES)
+
+        # === 状态栏 ===
+        self.status_var = ttk.StringVar(value="就绪 - 双击左侧列表选择配置，或手动输入新配置")
+        status_bar = ttk.Label(right_frame, textvariable=self.status_var, bootstyle="inverse-secondary", padding=(10, 5))
+        status_bar.pack(fill=X, pady=(10, 0))
+
+    def create_query_tab(self, parent):
+        """创建查询标签页内容"""
         # === 配置详情区 ===
-        config_frame = ttk.Labelframe(right_frame, text=" 配置详情 ", padding=15, bootstyle="primary")
-        config_frame.pack(fill=X, pady=(0, 15))
+        config_frame = ttk.Labelframe(parent, text=" 配置详情 ", padding=15, bootstyle="primary")
+        config_frame.pack(fill=X, pady=(0, 10))
 
         # 配置名称
         name_frame = ttk.Frame(config_frame)
@@ -137,8 +167,8 @@ class ApiQueryApp:
         ttk.Checkbutton(key_frame, text="显示", variable=self.show_key_var, command=self.toggle_key_visibility, bootstyle="round-toggle").pack(side=LEFT)
 
         # === 操作按钮 ===
-        btn_frame = ttk.Frame(right_frame)
-        btn_frame.pack(fill=X, pady=(0, 15))
+        btn_frame = ttk.Frame(parent)
+        btn_frame.pack(fill=X, pady=(0, 10))
 
         ttk.Button(btn_frame, text="💰 查询余额", command=self.query_balance, bootstyle="primary", width=15).pack(side=LEFT, padx=5)
         ttk.Button(btn_frame, text="📋 查询日志", command=self.query_logs, bootstyle="info", width=15).pack(side=LEFT, padx=5)
@@ -146,7 +176,7 @@ class ApiQueryApp:
         ttk.Button(btn_frame, text="🧹 清空结果", command=self.clear_result, bootstyle="secondary-outline", width=15).pack(side=RIGHT, padx=5)
 
         # === 结果显示区 ===
-        result_frame = ttk.Labelframe(right_frame, text=" 查询结果 ", padding=10, bootstyle="dark")
+        result_frame = ttk.Labelframe(parent, text=" 查询结果 ", padding=10, bootstyle="dark")
         result_frame.pack(fill=BOTH, expand=YES)
 
         self.result_notebook = ttk.Notebook(result_frame)
@@ -182,11 +212,6 @@ class ApiQueryApp:
         self.logs_tree.configure(yscrollcommand=logs_scrollbar.set)
         self.logs_tree.pack(side=LEFT, fill=BOTH, expand=YES)
         logs_scrollbar.pack(side=RIGHT, fill=Y)
-
-        # === 状态栏 ===
-        self.status_var = ttk.StringVar(value="就绪 - 双击左侧列表选择配置，或手动输入新配置")
-        status_bar = ttk.Label(right_frame, textvariable=self.status_var, bootstyle="inverse-secondary", padding=(10, 5))
-        status_bar.pack(fill=X, pady=(15, 0))
 
     def toggle_key_visibility(self):
         """切换 API Key 显示/隐藏"""
@@ -264,6 +289,9 @@ class ApiQueryApp:
             self.load_profile(idx)
             self.status_var.set(f"✅ 已加载配置: {self.name_var.get()}")
 
+            # 同步到测试和统计模块
+            self._sync_site_to_modules()
+
     def load_profile(self, idx):
         """加载指定配置"""
         profiles = self.config.get("profiles", [])
@@ -279,6 +307,28 @@ class ApiQueryApp:
             self._current_profile_endpoints = p.get("endpoints", {})
             self._current_profile_proxy = p.get("proxy", "")
             self._current_profile_jwt_token = p.get("jwt_token", "")
+            # 保存当前 profile 引用
+            self._current_profile = p
+
+    def _sync_site_to_modules(self):
+        """同步当前选中的站点到测试和统计模块"""
+        if not hasattr(self, '_current_profile'):
+            return
+
+        p = self._current_profile
+        site_info = {
+            "name": p.get("name", ""),
+            "url": p.get("url", ""),
+            "api_key": p.get("key", ""),
+        }
+
+        # 同步到测试模块
+        if hasattr(self, 'test_frame'):
+            self.test_frame.set_current_site(site_info)
+
+        # 同步到统计模块
+        if hasattr(self, 'stats_frame'):
+            self.stats_frame.set_current_site(site_info)
 
     def save_profile(self):
         """保存当前配置"""
@@ -774,13 +824,14 @@ class ApiQueryApp:
         SettingsDialog(self.root, self.config, app=self)
 
     def open_stats(self):
-        """打开统计对话框"""
-        profiles = self.config.get("profiles", [])
-        StatsDialog(self.root, profiles=profiles)
+        """切换到统计标签页"""
+        self.main_notebook.select(2)
+        # 更新 profiles 数据
+        self.stats_frame.set_profiles(self.config.get("profiles", []))
 
     def open_test(self):
-        """打开站点测试对话框"""
-        TestDialog(self.root)
+        """切换到测试标签页"""
+        self.main_notebook.select(1)
 
     def show_window(self):
         """显示主窗口"""
