@@ -315,17 +315,27 @@ class TestFrame(ttkb.Frame):
         """接口预设切换"""
         idx = self.preset_combo.current()
         if idx >= 0 and idx < len(PRESET_LIST):
-            preset_id, _ = PRESET_LIST[idx]
-            self.selected_preset.set(preset_id)
+            preset_id, preset_name = PRESET_LIST[idx]
+            # 不要修改 selected_preset，它绑定到 Combobox，应该保持显示名称
+            # self.selected_preset.set(preset_id)  # ❌ 错误：会导致显示 ID 而不是名称
 
             # 更新模型列表
             if "anthropic" in preset_id:
                 models = DEFAULT_MODELS.get("anthropic", [])
             else:
                 models = DEFAULT_MODELS.get("openai", [])
+
+            # 保存当前选中的模型
+            current_model = self.selected_model.get()
             self.model_combo["values"] = [m[0] for m in models]
+
+            # 如果当前模型在新列表中，保持选中；否则选择第一个
             if models:
-                self.selected_model.set(models[0][0])
+                model_ids = [m[0] for m in models]
+                if current_model in model_ids:
+                    self.selected_model.set(current_model)
+                else:
+                    self.selected_model.set(models[0][0])
 
     def _open_settings(self):
         """打开设置对话框"""
@@ -347,6 +357,13 @@ class TestFrame(ttkb.Frame):
         if idx >= 0 and idx < len(PRESET_LIST):
             return PRESET_LIST[idx][0]
         return "anthropic_relay"
+
+    def _get_current_preset_name(self) -> str:
+        """获取当前预设显示名称"""
+        idx = self.preset_combo.current()
+        if idx >= 0 and idx < len(PRESET_LIST):
+            return PRESET_LIST[idx][1]
+        return "中转站 Anthropic"
 
     def _send_request_with_preset(self, url: str, api_key: str, message: str,
                                    on_thinking=None, on_text=None, on_status=None) -> str:
@@ -563,12 +580,12 @@ class TestFrame(ttkb.Frame):
 
         url = self.current_site.get("url", "")
         model_id = self.selected_model.get()
-        preset_id = self._get_current_preset_id()
+        preset_name = self._get_current_preset_name()  # ✅ 使用显示名称
 
         self._clear_output()
         self._append_output(f"🔍 真伪性测试: {url}\n")
         self._append_output(f"📦 使用模型: {model_id}\n")
-        self._append_output(f"🔌 接口预设: {preset_id}\n")
+        self._append_output(f"🔌 接口预设: {preset_name}\n")  # ✅ 显示名称而不是 ID
         self._append_output("-" * 40 + "\n")
 
         self._set_testing(True)
