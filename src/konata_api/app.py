@@ -658,7 +658,8 @@ class ApiQueryApp:
                 result = query_balance(key, url, subscription_api=sub_api, usage_api=usage_api, auth_type=auth_type)
                 self.root.after(0, lambda: self.on_balance_result(result, self.name_var.get() or url))
             except Exception as e:
-                self.root.after(0, lambda: self.on_query_error(str(e)))
+                error_message = str(e)
+                self.root.after(0, lambda msg=error_message: self.on_query_error(msg))
 
         threading.Thread(target=query_thread, daemon=True).start()
 
@@ -874,7 +875,6 @@ class ApiQueryApp:
         if "hard_limit_usd" in result:
             remaining = result.get('remaining_usd', 0)
             total = result.get('hard_limit_usd', 0)
-            used = result.get('used_usd', 0)
             pct = (remaining / total * 100) if total > 0 else 0
             self.result_text.insert("end", f"   💵 USD: ${remaining:.2f} / ${total:.2f} ({pct:.1f}%)\n")
             has_data = True
@@ -953,7 +953,8 @@ class ApiQueryApp:
                 result = query_logs(key, url, page_size=page_size, page=1, order="desc", custom_api_path=logs_api, proxy_url=proxy_url, auth_type=auth_type)
                 self.root.after(0, lambda: self.on_logs_result(result, self.name_var.get() or "未命名"))
             except Exception as e:
-                self.root.after(0, lambda: self.on_logs_error(str(e)))
+                error_message = str(e)
+                self.root.after(0, lambda msg=error_message: self.on_logs_error(msg))
 
         threading.Thread(target=query_thread, daemon=True).start()
 
@@ -1173,7 +1174,7 @@ class ApiQueryApp:
 
 def main():
     root = ttk.Window(themename="cosmo")
-    app = ApiQueryApp(root)
+    ApiQueryApp(root)
     root.mainloop()
 
 

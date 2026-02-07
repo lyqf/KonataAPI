@@ -239,7 +239,7 @@ def query_balance(
         token_resp.raise_for_status()
         token_data = token_resp.json()
         raw_responses["token"] = token_data
-        if token_data.get("code") and "data" in token_data:
+        if token_data.get("code") == 0 and "data" in token_data:
             data = token_data["data"]
             result["total_granted"] = data.get("total_granted", 0)
             result["total_used"] = data.get("total_used", 0)
