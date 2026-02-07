@@ -21,7 +21,7 @@
 - **自动批量查询** - 定时自动查询所有站点余额
 - **站点统计模块** - 管理站点档案、手动记录余额、记录充值、统计消费
 - **站点测试模块** - 连通性测试、Claude 真伪性检测、原生对话
-  - **多种 API 预设** - 支持原生 Anthropic/OpenAI、中转站格式、Claude CLI 真实格式
+  - **多种 API 预设** - 支持原生 Anthropic/OpenAI、OpenAI Responses、中转站格式、Claude CLI 真实格式
   - **Claude CLI 真实格式** - 完全模拟 Claude Code CLI 请求，可绕过部分中转站验证
 - **一键签到功能** - 支持自动 API 签到和浏览器签到两种方式
   - 配置 Cookie 的站点自动调用 API 签到
@@ -167,6 +167,29 @@ python main.py
 
 部分中转站的日志接口有访问限制，需要通过代理访问。可以在「高级设置」中为单个站点配置代理地址。
 
+## 站点测试：OpenAI Responses 预设
+
+测试模块新增 **OpenAI Responses** 预设（`/v1/responses`），并支持流式解析。常用参数：
+- `metadata`：可写入自定义键值对，方便服务端侧追踪或统计。
+- `text.format`：Responses 的结构化输出配置，默认 `type: "text"`；可切换为 `json_object` 或 `json_schema` 以获得结构化输出。
+
+**多模态输入示例**（可在“接口设置”里编辑请求体）：
+```json
+{
+  "model": "gpt-4o",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        { "type": "input_text", "text": "描述这张图" },
+        { "type": "input_image", "image_url": "https://example.com/image.png" }
+      ]
+    }
+  ],
+  "stream": true
+}
+```
+
 ### 配置文件格式
 
 #### 全局设置 - config.json
@@ -219,7 +242,13 @@ python main.py
       "balance": 100.0,
       "balance_unit": "USD",
       "checkin_url": "https://example.com/console/personal",
+      "checkin_api_path": "/api/user/checkin",
       "session_cookie": "session=xxx; cf_clearance=xxx",
+      "checkin_headers": {
+        "User-Agent": "Mozilla/5.0 ...",
+        "Referer": "https://example.com/console"
+      },
+      "checkin_cookie_updated_at": "2026-02-07 10:30:00",
       "checkin_user_id": "123",
       "notes": "备注信息",
       "balance_auth_type": "bearer",
@@ -252,7 +281,10 @@ python main.py
 - `balance` - 当前余额（手动记录）
 - `balance_unit` - 余额单位
 - `checkin_url` - 签到网址（用于一键签到，必填才会参与签到）
+- `checkin_api_path` - 签到接口路径（默认 `/api/user/checkin`）
 - `session_cookie` - 签到 Cookie（用于自动 API 签到）
+- `checkin_headers` - 签到额外 Headers（JSON 对象，用于 WAF 站点）
+- `checkin_cookie_updated_at` - Cookie 最近更新时间（自动维护）
 - `checkin_user_id` - 签到用户 ID（部分站点需要 new-api-user Header）
 - `notes` - 备注信息
 - `balance_auth_type` - 余额查询认证方式（`bearer` / `url_key`）
@@ -316,9 +348,15 @@ KonataAPI/
 └── .gitignore
 ```
 
-## 感谢L站此方佬(@user2996)针对claude模型真假方法的分享，本项目根据 https://apikey.cifang.xyz/ 进行模仿与个人针对性更改。
+## 致谢
+
+感谢 L 站此方佬（@user2996）分享 Claude 模型真伪性检测思路；本项目参考了以下站点并做了针对性改进：
+
+```
+https://apikey.cifang.xyz/
+```
 
 
 ## License
 
-MIT
+MIT License. See `LICENSE`.

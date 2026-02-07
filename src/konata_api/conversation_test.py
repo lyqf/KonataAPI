@@ -38,8 +38,12 @@ MODEL_OPTIONS = {
 
 # 模型列表（供 GUI 下拉框使用）
 MODEL_LIST = [
-    ("claude-sonnet-4-5-20250929", "Sonnet 4.5"),
+    ("claude-haiku-4-5-20251001", "Haiku 4.5"),
+    ("claude-opus-4-20250514", "Opus 4"),
     ("claude-opus-4-5-20251101", "Opus 4.5"),
+    ("claude-opus-4-6", "Opus 4.6"),
+    ("claude-sonnet-4-20250514", "Sonnet 4"),
+    ("claude-sonnet-4-5-20250929", "Sonnet 4.5"),
 ]
 
 

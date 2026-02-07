@@ -449,8 +449,9 @@ class ApiQueryApp:
 
         for site in self.stats_data.get("sites", []):
             checkin_url = site.get("checkin_url", "").strip()
-            if not checkin_url:
-                continue  # 没有签到网址的不参与
+            checkin_path = site.get("checkin_api_path", "").strip()
+            if not checkin_url and not checkin_path:
+                continue  # 没有签到网址或接口路径的不参与
 
             session_cookie = site.get("session_cookie", "").strip()
             url = site.get("url", "").strip()
@@ -458,7 +459,8 @@ class ApiQueryApp:
             if session_cookie and url:
                 api_sites.append(site)
             else:
-                browser_sites.append(site)
+                if checkin_url:
+                    browser_sites.append(site)
 
         if not api_sites and not browser_sites:
             messagebox.showinfo("提示", "没有配置签到网址的站点\n\n请在「数据统计」中为站点配置签到网址")
@@ -494,8 +496,18 @@ class ApiQueryApp:
             base_url = site.get("url", "")
             session_cookie = site.get("session_cookie", "")
             user_id = site.get("checkin_user_id", "")
+            checkin_path = site.get("checkin_api_path", "/api/user/checkin")
+            extra_headers = site.get("checkin_headers", {})
+            if not isinstance(extra_headers, dict):
+                extra_headers = {}
 
-            result = do_checkin(base_url, session_cookie, user_id)
+            result = do_checkin(
+                base_url,
+                session_cookie,
+                user_id,
+                checkin_path=checkin_path,
+                extra_headers=extra_headers,
+            )
 
             if result.get("success"):
                 quota = result.get("quota_awarded", 0)

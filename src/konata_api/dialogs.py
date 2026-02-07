@@ -130,6 +130,17 @@ class SettingsDialog:
         ttk.Entry(page_size_row, textvariable=self.page_size_var, width=10, bootstyle="info").pack(side=LEFT, padx=(10, 0))
         ttk.Label(page_size_row, text="（默认 50）", bootstyle="secondary").pack(side=LEFT, padx=(10, 0))
 
+        # 调试日志
+        debug_row = ttk.Frame(logs_frame)
+        debug_row.pack(fill=X, pady=(10, 0))
+        self.debug_log_var = ttk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            debug_row,
+            text="启用 API 调试日志（写入 debug/requests.log）",
+            variable=self.debug_log_var,
+            bootstyle="round-toggle"
+        ).pack(anchor=W)
+
     def create_auto_tab(self, parent):
         """创建自动查询设置页"""
         # 启用开关
@@ -194,6 +205,8 @@ class SettingsDialog:
         # 日志设置
         endpoints = self.config.get("api_endpoints", {})
         self.page_size_var.set(str(endpoints.get("logs_page_size", 50)))
+        debug = self.config.get("debug", {})
+        self.debug_log_var.set(bool(debug.get("enable_api_log", False)))
 
         # 自动查询
         auto_query = self.config.get("auto_query", {})
@@ -229,6 +242,10 @@ class SettingsDialog:
         if "api_endpoints" not in self.config:
             self.config["api_endpoints"] = {}
         self.config["api_endpoints"]["logs_page_size"] = page_size
+
+        # 保存调试日志开关
+        self.config.setdefault("debug", {})
+        self.config["debug"]["enable_api_log"] = self.debug_log_var.get()
 
         # 保存自动查询设置
         try:

@@ -94,6 +94,38 @@ API_PRESETS = {
         "supports_thinking": False,
         "thinking_config": {}
     },
+    "openai_responses": {
+        "name": "OpenAI Responses",
+        "description": "OpenAI Responses API 格式",
+        "endpoint": "/v1/responses",
+        "headers": {
+            "accept": "application/json",
+            "content-type": "application/json",
+        },
+        "body_template": {
+            "model": "{model}",
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": "{message}"}
+                    ]
+                }
+            ],
+            "metadata": {},
+            "text": {
+                "format": {
+                    "type": "text"
+                }
+            },
+            "max_output_tokens": 8192,
+            "stream": True
+        },
+        "auth_header": "Authorization",
+        "auth_prefix": "Bearer ",
+        "supports_thinking": False,
+        "thinking_config": {}
+    },
     "anthropic_relay": {
         "name": "中转站 Anthropic",
         "description": "中转站 Anthropic 兼容格式（模拟 Claude CLI）",
@@ -223,6 +255,7 @@ PRESET_LIST = [
     ("anthropic_cli_real", "Claude CLI 真实格式 (推荐)"),
     ("anthropic_relay", "中转站 Anthropic"),
     ("openai_relay", "中转站 OpenAI"),
+    ("openai_responses", "OpenAI Responses"),
     ("anthropic_native", "原生 Anthropic"),
     ("openai_native", "原生 OpenAI"),
     ("custom", "自定义接口"),
@@ -231,16 +264,18 @@ PRESET_LIST = [
 # 默认模型列表
 DEFAULT_MODELS = {
     "anthropic": [
-        ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
+        ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
+        ("claude-opus-4-20250514", "Claude Opus 4"),
         ("claude-opus-4-5-20251101", "Claude Opus 4.5"),
+        ("claude-opus-4-6", "Claude Opus 4.6"),
         ("claude-sonnet-4-20250514", "Claude Sonnet 4"),
-        ("claude-3-5-sonnet-20241022", "Claude Sonnet 3.5"),
+        ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
     ],
     "openai": [
-        ("gpt-4o", "GPT-4o"),
-        ("gpt-4-turbo", "GPT-4 Turbo"),
-        ("gpt-4", "GPT-4"),
-        ("gpt-3.5-turbo", "GPT-3.5 Turbo"),
+        ("gpt-5-codex", "GPT-5 Codex"),
+        ("gpt-5.1-codex", "GPT-5.1 Codex"),
+        ("gpt-5.2-codex", "GPT-5.2 Codex"),
+        ("gpt-5.3-codex", "GPT-5.3 Codex"),
     ]
 }
 

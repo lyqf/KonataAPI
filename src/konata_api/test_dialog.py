@@ -41,6 +41,8 @@ class TestFrame(ttkb.Frame):
 
         # 测试状态
         self.is_testing = False
+        self._last_request = None
+        self._last_response = None
 
         # 思考模式开关
         self.with_thinking = tk.BooleanVar(value=True)
@@ -143,24 +145,33 @@ class TestFrame(ttkb.Frame):
 
         self.btn_connectivity = ttk.Button(
             btn_row1, text="🔗 连通性测试", command=self._test_connectivity,
-            bootstyle="info", width=14
+            bootstyle="info", width=12
         )
         self.btn_connectivity.pack(side=LEFT, padx=(0, 5))
 
         self.btn_authenticity = ttk.Button(
             btn_row1, text="🔍 真伪性测试", command=self._test_authenticity,
-            bootstyle="warning", width=14
+            bootstyle="warning", width=12
         )
         self.btn_authenticity.pack(side=LEFT, padx=(0, 5))
 
         ttk.Button(
-            btn_row1, text="🗑️ 清空", command=self._clear_output,
-            bootstyle="secondary-outline", width=14
+            btn_row1, text="📋 复制请求", command=self._copy_last_request,
+            bootstyle="secondary-outline", width=10
+        ).pack(side=LEFT, padx=(0, 5))
+        ttk.Button(
+            btn_row1, text="📋 复制响应", command=self._copy_last_response,
+            bootstyle="secondary-outline", width=10
+        ).pack(side=LEFT, padx=(0, 5))
+
+        ttk.Button(
+            btn_row1, text="🗑️清空", command=self._clear_output,
+            bootstyle="secondary-outline", width=10
         ).pack(side=LEFT, padx=(0, 5))
 
         ttk.Button(
             btn_row1, text="⚙️ 设置", command=self._open_settings,
-            bootstyle="dark-outline", width=8
+            bootstyle="dark-outline", width=7
         ).pack(side=LEFT)
 
         # 第二行：接口预设和模型选择
@@ -394,6 +405,17 @@ class TestFrame(ttkb.Frame):
                 on_status(f"❌ 配置错误: {body}")
             return ""
 
+        # 保存最近请求（隐藏敏感字段）
+        safe_headers = dict(headers)
+        for k in list(safe_headers.keys()):
+            if k.lower() in ("authorization", "x-api-key"):
+                safe_headers[k] = "***"
+        self._last_request = {
+            "url": full_url,
+            "headers": safe_headers,
+            "body": body,
+        }
+
         if on_status:
             on_status(f"🔗 连接中: {full_url}")
 
@@ -403,9 +425,14 @@ class TestFrame(ttkb.Frame):
             with httpx.Client(timeout=600.0) as client:
                 with client.stream("POST", full_url, headers=headers, json=body) as response:
                     if response.status_code != 200:
-                        error = response.read().decode('utf-8')
+                        error = response.read().decode('utf-8', errors='ignore')
+                        hint = self._describe_http_error(
+                            response.status_code,
+                            error,
+                            response.headers.get("Content-Type", "")
+                        )
                         if on_status:
-                            on_status(f"❌ 请求失败 [{response.status_code}]: {error}")
+                            on_status(f"❌ 请求失败 [{response.status_code}]: {hint}")
                         return ""
 
                     if on_status:
@@ -413,12 +440,19 @@ class TestFrame(ttkb.Frame):
 
                     # 判断响应格式
                     is_anthropic = "anthropic" in preset_id or (self.api_config and "/v1/messages" in self.api_config.get("endpoint", ""))
+                    is_openai_responses = (
+                        preset_id == "openai_responses"
+                        or (self.api_config and "/v1/responses" in self.api_config.get("endpoint", ""))
+                    )
 
                     if is_anthropic:
                         full_response = self._parse_anthropic_stream(response, on_thinking, on_text, on_status)
+                    elif is_openai_responses:
+                        full_response = self._parse_openai_responses_stream(response, on_text, on_status)
                     else:
                         full_response = self._parse_openai_stream(response, on_text, on_status)
 
+            self._last_response = full_response
             return full_response
 
         except httpx.ConnectError:
@@ -433,6 +467,38 @@ class TestFrame(ttkb.Frame):
             if on_status:
                 on_status(f"❌ 请求异常: {e}")
             return ""
+
+    def _describe_http_error(self, status_code: int, body: str, content_type: str) -> str:
+        """根据响应内容给出更明确的错误提示（含 Cloudflare 5xx 识别）"""
+        text = (body or "").strip()
+        ct = (content_type or "").lower()
+        lower = text.lower()
+
+        # Cloudflare 5xx 页面识别
+        is_cf = (
+            "cloudflare" in lower
+            or "cf-ray" in lower
+            or "cf-error" in lower
+            or "error code 502" in lower
+            or "error code 503" in lower
+            or "error code 504" in lower
+        )
+        if status_code >= 500 and (is_cf or "text/html" in ct or lower.startswith("<!doctype html")):
+            return (
+                "Cloudflare/源站 5xx 错误：上游服务异常或暂时不可用。"
+                "请稍后重试，或更换站点/线路/代理。"
+            )
+
+        # 非 JSON 返回
+        if "application/json" not in ct and text:
+            preview = text[:200] + ("..." if len(text) > 200 else "")
+            return f"返回非 JSON 内容: {preview}"
+
+        # 默认
+        if text:
+            preview = text[:200] + ("..." if len(text) > 200 else "")
+            return preview
+        return "未知错误或空响应"
 
     def _parse_anthropic_stream(self, response, on_thinking, on_text, on_status) -> str:
         """解析 Anthropic 流式响应"""
@@ -496,6 +562,31 @@ class TestFrame(ttkb.Frame):
 
         return full_response
 
+    def _copy_last_request(self):
+        """复制最近请求到剪贴板"""
+        if not self._last_request:
+            messagebox.showwarning("提示", "暂无可复制的请求")
+            return
+        try:
+            content = json.dumps(self._last_request, ensure_ascii=False, indent=2)
+            self.clipboard_clear()
+            self.clipboard_append(content)
+            messagebox.showinfo("成功", "已复制最近请求")
+        except Exception:
+            messagebox.showerror("错误", "复制失败")
+
+    def _copy_last_response(self):
+        """复制最近响应到剪贴板"""
+        if not self._last_response:
+            messagebox.showwarning("提示", "暂无可复制的响应")
+            return
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(self._last_response)
+            messagebox.showinfo("成功", "已复制最近响应")
+        except Exception:
+            messagebox.showerror("错误", "复制失败")
+
     def _parse_openai_stream(self, response, on_text, on_status) -> str:
         """解析 OpenAI 流式响应"""
         full_response = ""
@@ -528,6 +619,56 @@ class TestFrame(ttkb.Frame):
 
                 except json.JSONDecodeError:
                     pass
+
+        return full_response
+
+    def _parse_openai_responses_stream(self, response, on_text, on_status) -> str:
+        """解析 OpenAI Responses API 流式响应"""
+        full_response = ""
+        buffer = ""
+
+        for chunk in response.iter_bytes():
+            buffer += chunk.decode('utf-8', errors='ignore')
+
+            while '\n' in buffer:
+                line, buffer = buffer.split('\n', 1)
+                line = line.strip()
+
+                if not line.startswith("data: "):
+                    continue
+
+                data = line[6:]
+                if data == "[DONE]":
+                    break
+
+                try:
+                    event = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+
+                event_type = event.get("type", "")
+                if event_type == "response.output_text.delta":
+                    delta = event.get("delta", "")
+                    if delta:
+                        full_response += delta
+                        if on_text:
+                            on_text(delta)
+                elif event_type == "response.output_text.done":
+                    text = event.get("text", "")
+                    if text and not full_response:
+                        full_response = text
+                        if on_text:
+                            on_text(text)
+                elif event_type == "response.refusal.delta":
+                    delta = event.get("delta", "")
+                    if delta:
+                        full_response += delta
+                        if on_text:
+                            on_text(delta)
+                elif event_type == "error":
+                    message = event.get("message", "未知错误")
+                    if on_status:
+                        on_status(f"❌ {message}")
 
         return full_response
 

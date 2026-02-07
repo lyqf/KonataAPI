@@ -1,4 +1,52 @@
+from typing import Optional
+import os
+from datetime import datetime
 import requests
+from konata_api.utils import get_exe_dir, load_config
+
+
+def _should_log_debug() -> bool:
+    config = load_config()
+    return bool(config.get("debug", {}).get("enable_api_log", False))
+
+
+def _log_debug(message: str):
+    if not _should_log_debug():
+        return
+    try:
+        log_dir = os.path.join(get_exe_dir(), "debug")
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, "requests.log")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] {message}\n")
+    except Exception:
+        pass
+
+
+def _describe_http_response(status_code: int, text: str, content_type: str = "") -> str:
+    content = (text or "").strip()
+    lower = content.lower()
+    ct = (content_type or "").lower()
+
+    is_cf = (
+        "cloudflare" in lower
+        or "cf-ray" in lower
+        or "cf-error" in lower
+        or "error code 502" in lower
+        or "error code 503" in lower
+        or "error code 504" in lower
+    )
+    if status_code >= 500 and (is_cf or "text/html" in ct or lower.startswith("<!doctype html")):
+        return "Cloudflare/源站 5xx 错误：上游异常或暂时不可用"
+
+    if "text/html" in ct or lower.startswith("<!doctype html"):
+        return "返回 HTML 页面，可能被 WAF 拦截或登录态失效"
+
+    if content:
+        preview = content[:200] + ("..." if len(content) > 200 else "")
+        return preview
+    return "空响应或未知错误"
 
 
 def query_balance(
@@ -279,7 +327,10 @@ def query_logs(
 
     try:
         resp = requests.get(request_url, params=params, headers=headers, timeout=10)
-        resp.raise_for_status()
+        if resp.status_code != 200:
+            detail = _describe_http_response(resp.status_code, resp.text, resp.headers.get("Content-Type", ""))
+            _log_debug(f"query_logs {request_url} status={resp.status_code} detail={detail}")
+            return {"error": f"HTTP {resp.status_code}: {detail}"}
 
         # 检查响应内容是否为空
         if not resp.text.strip():
@@ -288,9 +339,9 @@ def query_logs(
         try:
             data = resp.json()
         except ValueError:
-            # JSON 解析失败，返回原始内容的前200字符
-            preview = resp.text[:200] if len(resp.text) > 200 else resp.text
-            return {"error": f"API 返回非 JSON 格式: {preview}"}
+            detail = _describe_http_response(resp.status_code, resp.text, resp.headers.get("Content-Type", ""))
+            _log_debug(f"query_logs {request_url} json_error detail={detail}")
+            return {"error": f"API 返回非 JSON 格式: {detail}"}
 
         # 保存原始返回数据
         raw_response = data
@@ -308,10 +359,17 @@ def query_logs(
             "raw_response": raw_response
         }
     except requests.exceptions.RequestException as e:
+        _log_debug(f"query_logs {request_url} exception={e}")
         return {"error": str(e)}
 
 
-def do_checkin(base_url: str, session_cookie: str, user_id: str = "") -> dict:
+def do_checkin(
+    base_url: str,
+    session_cookie: str,
+    user_id: str = "",
+    checkin_path: str = "/api/user/checkin",
+    extra_headers: Optional[dict] = None,
+) -> dict:
     """
     执行签到（使用 Session Cookie 认证）
 
@@ -319,6 +377,8 @@ def do_checkin(base_url: str, session_cookie: str, user_id: str = "") -> dict:
         base_url: API 基础地址
         session_cookie: 浏览器 Session Cookie（包含 session=xxx 等）
         user_id: 用户 ID（某些站点需要 new-api-user Header）
+        checkin_path: 签到接口路径（默认 /api/user/checkin）
+        extra_headers: 额外请求头（JSON 对象）
 
     Returns:
         dict: 签到结果
@@ -335,9 +395,14 @@ def do_checkin(base_url: str, session_cookie: str, user_id: str = "") -> dict:
     }
     if user_id:
         headers["new-api-user"] = user_id
+    if extra_headers:
+        headers.update(extra_headers)
 
     try:
-        resp = requests.post(f"{base}/api/user/checkin", headers=headers, timeout=15)
+        path = checkin_path.strip() or "/api/user/checkin"
+        if not path.startswith("/"):
+            path = "/" + path
+        resp = requests.post(f"{base}{path}", headers=headers, timeout=15)
 
         # 检查响应内容类型，判断是否被 Cloudflare 拦截
         content_type = resp.headers.get("Content-Type", "")
@@ -345,10 +410,9 @@ def do_checkin(base_url: str, session_cookie: str, user_id: str = "") -> dict:
 
         # 检测 Cloudflare 拦截
         if "text/html" in content_type or response_text.strip().startswith("<!DOCTYPE") or response_text.strip().startswith("<html"):
-            if "cf-" in response_text.lower() or "cloudflare" in response_text.lower() or "challenge" in response_text.lower():
-                return {"success": False, "message": "被 Cloudflare 拦截，请更新 Cookie（含 cf_clearance）"}
-            else:
-                return {"success": False, "message": "返回 HTML 页面，可能 Cookie 已过期"}
+            detail = _describe_http_response(resp.status_code, response_text, content_type)
+            _log_debug(f"checkin {base}{path} status={resp.status_code} detail={detail}")
+            return {"success": False, "message": detail}
 
         # 检查空响应
         if not response_text.strip():
@@ -358,9 +422,9 @@ def do_checkin(base_url: str, session_cookie: str, user_id: str = "") -> dict:
         try:
             data = resp.json()
         except ValueError:
-            # JSON 解析失败，返回部分响应内容
-            preview = response_text[:100] if len(response_text) > 100 else response_text
-            return {"success": False, "message": f"API 返回非 JSON: {preview}"}
+            detail = _describe_http_response(resp.status_code, response_text, content_type)
+            _log_debug(f"checkin {base}{path} json_error detail={detail}")
+            return {"success": False, "message": f"API 返回非 JSON: {detail}"}
 
         if data.get("success"):
             return {
@@ -375,10 +439,13 @@ def do_checkin(base_url: str, session_cookie: str, user_id: str = "") -> dict:
                 "message": data.get("message", "签到失败"),
             }
     except requests.exceptions.Timeout:
+        _log_debug(f"checkin {base}{path} timeout")
         return {"success": False, "message": "请求超时，请检查网络"}
     except requests.exceptions.ConnectionError:
+        _log_debug(f"checkin {base}{path} connection_error")
         return {"success": False, "message": "连接失败，请检查网络或站点是否可访问"}
     except requests.exceptions.RequestException as e:
+        _log_debug(f"checkin {base}{path} exception={e}")
         return {"success": False, "message": f"网络错误: {str(e)}"}
 
 
@@ -452,7 +519,12 @@ def query_balance_by_cookie(base_url: str, session_cookie: str, user_id: str = "
 
     try:
         resp = requests.get(f"{base}/api/user/self", headers=headers, timeout=15)
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError:
+            detail = _describe_http_response(resp.status_code, resp.text, resp.headers.get("Content-Type", ""))
+            _log_debug(f"balance_by_cookie {base}/api/user/self json_error detail={detail}")
+            return {"success": False, "message": f"API 返回非 JSON 格式: {detail}"}
 
         if data.get("success") and "data" in data:
             user_data = data["data"]
@@ -475,9 +547,8 @@ def query_balance_by_cookie(base_url: str, session_cookie: str, user_id: str = "
                 "message": data.get("message", "获取用户信息失败"),
             }
     except requests.exceptions.RequestException as e:
+        _log_debug(f"balance_by_cookie {base}/api/user/self exception={e}")
         return {"success": False, "message": f"网络错误: {str(e)}"}
-    except ValueError:
-        return {"success": False, "message": "API 返回非 JSON 格式"}
 
 
 if __name__ == "__main__":
