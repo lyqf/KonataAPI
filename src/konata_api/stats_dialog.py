@@ -12,7 +12,7 @@ from ttkbootstrap.scrolled import ScrolledFrame, ScrolledText
 from tkinter import messagebox, Text
 from PIL import Image, ImageTk
 
-from konata_api.utils import resource_path
+from konata_api.utils import resource_path, fit_toplevel
 from konata_api.stats import (
     load_stats, save_stats, create_site, add_site, update_site, delete_site,
     get_site_by_id, add_recharge_record, delete_recharge_record,
@@ -23,21 +23,6 @@ from konata_api.stats import (
     SITE_TYPE_PAID, SITE_TYPE_FREE, SITE_TYPE_SUBSCRIPTION, SITE_TYPE_LABELS
 )
 from konata_api.api import query_balance_by_cookie, do_checkin
-
-
-def fit_toplevel(window, preferred_width, preferred_height, min_width=520, min_height=360):
-    """根据屏幕尺寸自适应弹窗大小并居中"""
-    screen_w = window.winfo_screenwidth()
-    screen_h = window.winfo_screenheight()
-
-    width = min(preferred_width, max(screen_w - 60, min_width))
-    height = min(preferred_height, max(screen_h - 120, min_height))
-    width = max(width, min_width)
-    height = max(height, min_height)
-
-    x = max((screen_w - width) // 2, 0)
-    y = max((screen_h - height) // 2, 0)
-    window.geometry(f"{width}x{height}+{x}+{y}")
 
 
 class StatsFrame(ttk.Frame):

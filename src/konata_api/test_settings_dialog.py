@@ -23,22 +23,7 @@ from konata_api.api_presets import (
     import_presets,
     build_request,
 )
-from konata_api.utils import resource_path
-
-
-def fit_toplevel(window, preferred_width, preferred_height, min_width=620, min_height=420):
-    """根据屏幕尺寸自适应弹窗大小并居中"""
-    screen_w = window.winfo_screenwidth()
-    screen_h = window.winfo_screenheight()
-
-    width = min(preferred_width, max(screen_w - 60, min_width))
-    height = min(preferred_height, max(screen_h - 120, min_height))
-    width = max(width, min_width)
-    height = max(height, min_height)
-
-    x = max((screen_w - width) // 2, 0)
-    y = max((screen_h - height) // 2, 0)
-    window.geometry(f"{width}x{height}+{x}+{y}")
+from konata_api.utils import resource_path, fit_toplevel
 
 
 class TestSettingsDialog(ttkb.Toplevel):

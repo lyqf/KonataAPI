@@ -291,7 +291,7 @@ def test_connectivity(url: str, api_key: str = "", timeout: float = 10.0) -> dic
                     data = resp.json()
                     if "data" in data:
                         models = [m.get("id", "") for m in data["data"] if m.get("id")]
-                except:
+                except (ValueError, KeyError, TypeError):
                     pass
 
                 return {

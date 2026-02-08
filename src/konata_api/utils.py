@@ -44,7 +44,7 @@ def load_config():
         try:
             with open(config_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except (json.JSONDecodeError, IOError, OSError):
             pass
     return {"profiles": []}
 
@@ -107,3 +107,18 @@ def set_autostart(enable: bool):
     except Exception as e:
         print(f"设置开机自启动失败: {e}")
         return False
+
+
+def fit_toplevel(window, preferred_width, preferred_height, min_width=520, min_height=360):
+    """根据屏幕尺寸自适应弹窗大小并居中"""
+    screen_w = window.winfo_screenwidth()
+    screen_h = window.winfo_screenheight()
+
+    width = min(preferred_width, max(screen_w - 60, min_width))
+    height = min(preferred_height, max(screen_h - 120, min_height))
+    width = max(width, min_width)
+    height = max(height, min_height)
+
+    x = max((screen_w - width) // 2, 0)
+    y = max((screen_h - height) // 2, 0)
+    window.geometry(f"{width}x{height}+{x}+{y}")

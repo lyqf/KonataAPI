@@ -9,23 +9,9 @@ import json
 
 from konata_api.utils import (
     resource_path, save_config,
-    is_autostart_enabled, set_autostart
+    is_autostart_enabled, set_autostart,
+    fit_toplevel
 )
-
-
-def fit_toplevel(window, preferred_width, preferred_height, min_width=520, min_height=360):
-    """根据屏幕尺寸自适应弹窗大小并居中"""
-    screen_w = window.winfo_screenwidth()
-    screen_h = window.winfo_screenheight()
-
-    width = min(preferred_width, max(screen_w - 60, min_width))
-    height = min(preferred_height, max(screen_h - 120, min_height))
-    width = max(width, min_width)
-    height = max(height, min_height)
-
-    x = max((screen_w - width) // 2, 0)
-    y = max((screen_h - height) // 2, 0)
-    window.geometry(f"{width}x{height}+{x}+{y}")
 
 
 class SettingsDialog:
